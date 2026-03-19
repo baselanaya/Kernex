@@ -378,9 +378,7 @@ mod tests {
             "filter must contain at least one BPF_RET instruction"
         );
 
-        let has_kill = ret_instructions
-            .iter()
-            .any(|&k| k == SECCOMP_RET_KILL_PROCESS);
+        let has_kill = ret_instructions.contains(&SECCOMP_RET_KILL_PROCESS);
         assert!(
             has_kill,
             "filter must contain SECCOMP_RET_KILL_PROCESS (0x80000000) as the match action; \

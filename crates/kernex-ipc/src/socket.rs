@@ -8,161 +8,6 @@ use crate::codec::{read_message, write_message};
 use crate::{IpcError, IpcMessage};
 
 // ---------------------------------------------------------------------------
-// Tests — written first (Red), types and implementations defined below (Green)
-// ---------------------------------------------------------------------------
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::message::{Operation, PolicyQuery, Resource};
-
-    // -- Permission tests (Unix only) ----------------------------------------
-
-    #[cfg(unix)]
-    #[tokio::test]
-    async fn test_ipc_server_socket_directory_mode_is_0700() {
-        let server = IpcServer::bind().expect("bind should succeed");
-        let dir = server
-            .socket_path()
-            .parent()
-            .expect("socket path must have a parent directory");
-        let meta = std::fs::metadata(dir).expect("stat of socket directory should succeed");
-        let mode = meta.permissions().mode() & 0o777;
-        assert_eq!(
-            mode, 0o700,
-            "socket directory must be mode 0700, got 0{mode:o}"
-        );
-    }
-
-    #[cfg(unix)]
-    #[tokio::test]
-    async fn test_ipc_server_socket_file_mode_is_0600() {
-        let server = IpcServer::bind().expect("bind should succeed");
-        let meta =
-            std::fs::metadata(server.socket_path()).expect("stat of socket file should succeed");
-        let mode = meta.permissions().mode() & 0o777;
-        assert_eq!(mode, 0o600, "socket file must be mode 0600, got 0{mode:o}");
-    }
-
-    #[cfg(unix)]
-    #[tokio::test]
-    async fn test_ipc_server_socket_path_inside_system_tempdir() {
-        let server = IpcServer::bind().expect("bind should succeed");
-        let dir = server
-            .socket_path()
-            .parent()
-            .expect("socket must have a parent");
-        let tmp = std::env::temp_dir();
-        assert!(
-            dir.starts_with(&tmp),
-            "socket directory {dir:?} must be inside the system tempdir {tmp:?}"
-        );
-    }
-
-    #[cfg(unix)]
-    #[tokio::test]
-    async fn test_ipc_server_socket_directory_owned_by_current_user() {
-        use std::os::unix::fs::MetadataExt as _;
-        let server = IpcServer::bind().expect("bind should succeed");
-        let dir = server
-            .socket_path()
-            .parent()
-            .expect("socket path must have a parent directory");
-        let meta = std::fs::metadata(dir).expect("stat should succeed");
-        let current_uid = nix::unistd::getuid().as_raw();
-        assert_eq!(
-            meta.uid(),
-            current_uid,
-            "socket directory must be owned by the current user"
-        );
-    }
-
-    #[cfg(unix)]
-    #[tokio::test]
-    async fn test_ipc_server_socket_path_ends_with_kernex_sock() {
-        let server = IpcServer::bind().expect("bind should succeed");
-        let name = server
-            .socket_path()
-            .file_name()
-            .expect("socket path must have a filename");
-        assert_eq!(name, "kernex.sock");
-    }
-
-    // -- Functional tests ----------------------------------------------------
-
-    #[tokio::test]
-    async fn test_ipc_client_server_single_message_exchange() {
-        let server = IpcServer::bind().expect("bind should succeed");
-        let socket_path = server.socket_path().to_path_buf();
-
-        let query = IpcMessage::PolicyQuery(PolicyQuery {
-            id: 7,
-            operation: Operation::FileRead,
-            resource: Resource::Path(std::path::PathBuf::from("/tmp/data.csv")),
-        });
-        let expected = query.clone();
-
-        // Server: accept one connection and receive one message.
-        let server_task = tokio::spawn(async move {
-            let mut conn = server.accept().await.expect("accept should succeed");
-            conn.recv().await.expect("recv should succeed")
-        });
-
-        let mut client = IpcClient::connect(&socket_path)
-            .await
-            .expect("connect should succeed");
-        client.send(&query).await.expect("send should succeed");
-
-        let received = server_task.await.expect("server task should not panic");
-        assert_eq!(received, expected);
-    }
-
-    #[tokio::test]
-    async fn test_ipc_client_server_bidirectional_exchange() {
-        use crate::message::{PolicyDecision, Verdict};
-
-        let server = IpcServer::bind().expect("bind should succeed");
-        let socket_path = server.socket_path().to_path_buf();
-
-        let query = IpcMessage::PolicyQuery(PolicyQuery {
-            id: 10,
-            operation: Operation::NetworkConnect,
-            resource: Resource::Network {
-                host: "api.openai.com".to_string(),
-                port: 443,
-            },
-        });
-        let response = IpcMessage::PolicyDecision(PolicyDecision {
-            query_id: 10,
-            verdict: Verdict::Allow,
-        });
-        let query_clone = query.clone();
-        let response_clone = response.clone();
-
-        let server_task = tokio::spawn(async move {
-            let mut conn = server.accept().await.expect("accept should succeed");
-            let received = conn.recv().await.expect("recv query should succeed");
-            assert_eq!(received, query_clone);
-            conn.send(&response_clone)
-                .await
-                .expect("send decision should succeed");
-        });
-
-        let mut client = IpcClient::connect(&socket_path)
-            .await
-            .expect("connect should succeed");
-        client
-            .send(&query)
-            .await
-            .expect("send query should succeed");
-        let decision = client.recv().await.expect("recv decision should succeed");
-        assert_eq!(decision, response);
-
-        server_task.await.expect("server task should not panic");
-    }
-}
-
-// ---------------------------------------------------------------------------
 // IpcServer
 // ---------------------------------------------------------------------------
 
@@ -334,5 +179,160 @@ impl IpcConnection {
     /// - [`IpcError::Io`] on read failure.
     pub async fn recv(&mut self) -> Result<IpcMessage, IpcError> {
         read_message(&mut self.stream).await
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::message::{Operation, PolicyQuery, Resource};
+
+    // -- Permission tests (Unix only) ----------------------------------------
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_ipc_server_socket_directory_mode_is_0700() {
+        let server = IpcServer::bind().expect("bind should succeed");
+        let dir = server
+            .socket_path()
+            .parent()
+            .expect("socket path must have a parent directory");
+        let meta = std::fs::metadata(dir).expect("stat of socket directory should succeed");
+        let mode = meta.permissions().mode() & 0o777;
+        assert_eq!(
+            mode, 0o700,
+            "socket directory must be mode 0700, got 0{mode:o}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_ipc_server_socket_file_mode_is_0600() {
+        let server = IpcServer::bind().expect("bind should succeed");
+        let meta =
+            std::fs::metadata(server.socket_path()).expect("stat of socket file should succeed");
+        let mode = meta.permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "socket file must be mode 0600, got 0{mode:o}");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_ipc_server_socket_path_inside_system_tempdir() {
+        let server = IpcServer::bind().expect("bind should succeed");
+        let dir = server
+            .socket_path()
+            .parent()
+            .expect("socket must have a parent");
+        let tmp = std::env::temp_dir();
+        assert!(
+            dir.starts_with(&tmp),
+            "socket directory {dir:?} must be inside the system tempdir {tmp:?}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_ipc_server_socket_directory_owned_by_current_user() {
+        use std::os::unix::fs::MetadataExt as _;
+        let server = IpcServer::bind().expect("bind should succeed");
+        let dir = server
+            .socket_path()
+            .parent()
+            .expect("socket path must have a parent directory");
+        let meta = std::fs::metadata(dir).expect("stat should succeed");
+        let current_uid = nix::unistd::getuid().as_raw();
+        assert_eq!(
+            meta.uid(),
+            current_uid,
+            "socket directory must be owned by the current user"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_ipc_server_socket_path_ends_with_kernex_sock() {
+        let server = IpcServer::bind().expect("bind should succeed");
+        let name = server
+            .socket_path()
+            .file_name()
+            .expect("socket path must have a filename");
+        assert_eq!(name, "kernex.sock");
+    }
+
+    // -- Functional tests ----------------------------------------------------
+
+    #[tokio::test]
+    async fn test_ipc_client_server_single_message_exchange() {
+        let server = IpcServer::bind().expect("bind should succeed");
+        let socket_path = server.socket_path().to_path_buf();
+
+        let query = IpcMessage::PolicyQuery(PolicyQuery {
+            id: 7,
+            operation: Operation::FileRead,
+            resource: Resource::Path(std::path::PathBuf::from("/tmp/data.csv")),
+        });
+        let expected = query.clone();
+
+        // Server: accept one connection and receive one message.
+        let server_task = tokio::spawn(async move {
+            let mut conn = server.accept().await.expect("accept should succeed");
+            conn.recv().await.expect("recv should succeed")
+        });
+
+        let mut client = IpcClient::connect(&socket_path)
+            .await
+            .expect("connect should succeed");
+        client.send(&query).await.expect("send should succeed");
+
+        let received = server_task.await.expect("server task should not panic");
+        assert_eq!(received, expected);
+    }
+
+    #[tokio::test]
+    async fn test_ipc_client_server_bidirectional_exchange() {
+        use crate::message::{PolicyDecision, Verdict};
+
+        let server = IpcServer::bind().expect("bind should succeed");
+        let socket_path = server.socket_path().to_path_buf();
+
+        let query = IpcMessage::PolicyQuery(PolicyQuery {
+            id: 10,
+            operation: Operation::NetworkConnect,
+            resource: Resource::Network {
+                host: "api.openai.com".to_string(),
+                port: 443,
+            },
+        });
+        let response = IpcMessage::PolicyDecision(PolicyDecision {
+            query_id: 10,
+            verdict: Verdict::Allow,
+        });
+        let query_clone = query.clone();
+        let response_clone = response.clone();
+
+        let server_task = tokio::spawn(async move {
+            let mut conn = server.accept().await.expect("accept should succeed");
+            let received = conn.recv().await.expect("recv query should succeed");
+            assert_eq!(received, query_clone);
+            conn.send(&response_clone)
+                .await
+                .expect("send decision should succeed");
+        });
+
+        let mut client = IpcClient::connect(&socket_path)
+            .await
+            .expect("connect should succeed");
+        client
+            .send(&query)
+            .await
+            .expect("send query should succeed");
+        let decision = client.recv().await.expect("recv decision should succeed");
+        assert_eq!(decision, response);
+
+        server_task.await.expect("server task should not panic");
     }
 }
