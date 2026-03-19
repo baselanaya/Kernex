@@ -1,0 +1,34 @@
+[package]
+name = "kernex-macos"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "macOS sandbox adapter — Endpoint Security API enforcement for Kernex (beta)"
+
+# All ES API calls are confined to this crate.
+# The endpoint-sec dependency is gated so the crate compiles (as a no-op
+# stub) on non-macOS targets — enabling cross-platform unit tests via mocks.
+
+[package.metadata]
+# Beta: requires the com.apple.developer.endpoint-security.client entitlement
+# and macOS 10.15+.  Not yet production-hardened; see docs/adr/ for status.
+status = "beta"
+
+[features]
+# Enable integration tests that make real Endpoint Security API calls.
+# Requires the ES entitlement; run on entitled hardware only.
+#
+#   cargo test -p kernex-macos --features macos-integration-tests
+macos-integration-tests = []
+
+[dependencies]
+thiserror     = { workspace = true }
+tracing       = { workspace = true }
+kernex-policy = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+endpoint-sec = { workspace = true }
+
+[dev-dependencies]
+mockall  = { workspace = true }
+tempfile = { workspace = true }

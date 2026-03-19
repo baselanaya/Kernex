@@ -1,0 +1,22 @@
+[package]
+name = "kernex-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Platform-agnostic policy engine and enforcement orchestration for Kernex"
+
+# kernex-core must remain platform-agnostic — no #[cfg(target_os)] anywhere
+# in this crate. All OS-specific logic lives in kernex-linux / kernex-macos.
+
+[dependencies]
+thiserror      = { workspace = true }
+tokio          = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "time"] }
+tracing        = { workspace = true }
+kernex-policy  = { workspace = true }
+kernex-audit   = { workspace = true }
+kernex-ipc     = { workspace = true }
+
+[dev-dependencies]
+mockall  = { workspace = true }
+tempfile = { workspace = true }
+tokio    = { workspace = true, features = ["test-util", "rt"] }

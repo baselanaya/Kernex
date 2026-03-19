@@ -1,0 +1,35 @@
+[package]
+name = "kernex-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "kernex — zero-trust sandbox CLI for AI agents"
+
+[[bin]]
+name = "kernex"
+path = "src/main.rs"
+
+[dependencies]
+anyhow             = { workspace = true }
+clap               = { workspace = true }
+tokio              = { workspace = true, features = ["full"] }
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde              = { workspace = true }
+serde_json         = { workspace = true }
+serde_yaml         = { workspace = true }
+kernex-policy      = { workspace = true }
+kernex-core        = { workspace = true }
+kernex-audit       = { workspace = true }
+kernex-ipc         = { workspace = true }
+
+# Platform adapters — only the native target is linked.
+[target.'cfg(target_os = "linux")'.dependencies]
+kernex-linux = { workspace = true }
+nix = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+kernex-macos = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
