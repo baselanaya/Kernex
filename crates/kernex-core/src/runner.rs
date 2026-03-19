@@ -153,16 +153,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_jit_timeout_secs_is_positive() {
-        assert!(JIT_TIMEOUT_SECS > 0);
-    }
-
-    #[test]
-    fn test_score_warn_threshold_is_60() {
-        assert_eq!(SCORE_WARN_THRESHOLD, 60);
-    }
-
-    #[test]
     fn test_message_type_name_covers_all_variants() {
         use kernex_ipc::{
             IpcMessage, JitDecision, JitResponse, Operation, PolicyDecision, PolicyQuery, Resource,

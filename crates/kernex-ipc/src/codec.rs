@@ -9,7 +9,83 @@ use crate::{IpcError, IpcMessage};
 pub const MAX_MESSAGE_BYTES: usize = 4 * 1024 * 1024;
 
 // ---------------------------------------------------------------------------
-// Tests — written first (Red), implementations defined below (Green)
+// Codec implementation
+// ---------------------------------------------------------------------------
+
+/// Writes a single [`IpcMessage`] to `writer`.
+///
+/// Wire format: 4-byte little-endian `u32` length prefix followed by a
+/// UTF-8 JSON body of exactly that many bytes.
+///
+/// # Errors
+///
+/// - [`IpcError::MessageTooLarge`] if the serialized body exceeds
+///   [`MAX_MESSAGE_BYTES`].
+/// - [`IpcError::Serialize`] if the message cannot be JSON-encoded.
+/// - [`IpcError::Io`] if the underlying write fails.
+pub async fn write_message<W>(writer: &mut W, msg: &IpcMessage) -> Result<(), IpcError>
+where
+    W: tokio::io::AsyncWrite + Unpin,
+{
+    let body = serde_json::to_vec(msg)?;
+    let len = body.len();
+    if len > MAX_MESSAGE_BYTES {
+        return Err(IpcError::MessageTooLarge {
+            size: len,
+            limit: MAX_MESSAGE_BYTES,
+        });
+    }
+    // `len <= MAX_MESSAGE_BYTES` which is 4 MiB, well within u32::MAX.
+    let len_prefix = (len as u32).to_le_bytes();
+    writer.write_all(&len_prefix).await?;
+    writer.write_all(&body).await?;
+    Ok(())
+}
+
+/// Reads a single [`IpcMessage`] from `reader`.
+///
+/// Expects the wire format produced by [`write_message`]: a 4-byte
+/// little-endian `u32` length prefix followed by a JSON body of exactly
+/// that many bytes.
+///
+/// # Errors
+///
+/// - [`IpcError::ConnectionClosed`] if the peer closed the connection before
+///   sending the length prefix.
+/// - [`IpcError::MessageTooLarge`] if the declared body length exceeds
+///   [`MAX_MESSAGE_BYTES`].
+/// - [`IpcError::Serialize`] if the body is not valid JSON or does not match
+///   any known [`IpcMessage`] variant.
+/// - [`IpcError::Io`] on any other I/O failure.
+pub async fn read_message<R>(reader: &mut R) -> Result<IpcMessage, IpcError>
+where
+    R: tokio::io::AsyncRead + Unpin,
+{
+    let mut len_bytes = [0u8; 4];
+    match reader.read_exact(&mut len_bytes).await {
+        Ok(_) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+            return Err(IpcError::ConnectionClosed);
+        }
+        Err(e) => return Err(IpcError::Io(e)),
+    }
+
+    let len = u32::from_le_bytes(len_bytes) as usize;
+    if len > MAX_MESSAGE_BYTES {
+        return Err(IpcError::MessageTooLarge {
+            size: len,
+            limit: MAX_MESSAGE_BYTES,
+        });
+    }
+
+    let mut body = vec![0u8; len];
+    reader.read_exact(&mut body).await?;
+    let msg = serde_json::from_slice(&body)?;
+    Ok(msg)
+}
+
+// ---------------------------------------------------------------------------
+// Tests
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
@@ -152,80 +228,4 @@ mod tests {
         let decoded: IpcMessage = serde_json::from_slice(&body).expect("body should be valid JSON");
         assert_eq!(decoded, msg);
     }
-}
-
-// ---------------------------------------------------------------------------
-// Codec implementation
-// ---------------------------------------------------------------------------
-
-/// Writes a single [`IpcMessage`] to `writer`.
-///
-/// Wire format: 4-byte little-endian `u32` length prefix followed by a
-/// UTF-8 JSON body of exactly that many bytes.
-///
-/// # Errors
-///
-/// - [`IpcError::MessageTooLarge`] if the serialized body exceeds
-///   [`MAX_MESSAGE_BYTES`].
-/// - [`IpcError::Serialize`] if the message cannot be JSON-encoded.
-/// - [`IpcError::Io`] if the underlying write fails.
-pub async fn write_message<W>(writer: &mut W, msg: &IpcMessage) -> Result<(), IpcError>
-where
-    W: tokio::io::AsyncWrite + Unpin,
-{
-    let body = serde_json::to_vec(msg)?;
-    let len = body.len();
-    if len > MAX_MESSAGE_BYTES {
-        return Err(IpcError::MessageTooLarge {
-            size: len,
-            limit: MAX_MESSAGE_BYTES,
-        });
-    }
-    // `len <= MAX_MESSAGE_BYTES` which is 4 MiB, well within u32::MAX.
-    let len_prefix = (len as u32).to_le_bytes();
-    writer.write_all(&len_prefix).await?;
-    writer.write_all(&body).await?;
-    Ok(())
-}
-
-/// Reads a single [`IpcMessage`] from `reader`.
-///
-/// Expects the wire format produced by [`write_message`]: a 4-byte
-/// little-endian `u32` length prefix followed by a JSON body of exactly
-/// that many bytes.
-///
-/// # Errors
-///
-/// - [`IpcError::ConnectionClosed`] if the peer closed the connection before
-///   sending the length prefix.
-/// - [`IpcError::MessageTooLarge`] if the declared body length exceeds
-///   [`MAX_MESSAGE_BYTES`].
-/// - [`IpcError::Serialize`] if the body is not valid JSON or does not match
-///   any known [`IpcMessage`] variant.
-/// - [`IpcError::Io`] on any other I/O failure.
-pub async fn read_message<R>(reader: &mut R) -> Result<IpcMessage, IpcError>
-where
-    R: tokio::io::AsyncRead + Unpin,
-{
-    let mut len_bytes = [0u8; 4];
-    match reader.read_exact(&mut len_bytes).await {
-        Ok(_) => {}
-        Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-            return Err(IpcError::ConnectionClosed);
-        }
-        Err(e) => return Err(IpcError::Io(e)),
-    }
-
-    let len = u32::from_le_bytes(len_bytes) as usize;
-    if len > MAX_MESSAGE_BYTES {
-        return Err(IpcError::MessageTooLarge {
-            size: len,
-            limit: MAX_MESSAGE_BYTES,
-        });
-    }
-
-    let mut body = vec![0u8; len];
-    reader.read_exact(&mut body).await?;
-    let msg = serde_json::from_slice(&body)?;
-    Ok(msg)
 }

@@ -390,7 +390,7 @@ mod tests {
 
     #[test]
     fn test_score_warning_some_for_low_scoring_policy() {
-        let mut policy = KernexPolicy {
+        let policy = KernexPolicy {
             version: 1,
             agent_name: "agent".to_string(),
             filesystem: FilesystemPolicy {
@@ -410,7 +410,7 @@ mod tests {
             resource_limits: None, // 0 pts
             mcp_servers: vec![],
         };
-        let warn = score_warning(&mut policy);
+        let warn = score_warning(&policy);
         assert!(warn.is_some());
         let msg = warn.unwrap();
         assert!(msg.contains("score"));
@@ -593,7 +593,7 @@ mod tests {
             .filesystem
             .allow_read
             .iter()
-            .filter(|p| **p == PathBuf::from("/tmp/a"))
+            .filter(|p| p.as_path() == std::path::Path::new("/tmp/a"))
             .count();
         assert_eq!(count, 1, "duplicate paths must be deduplicated");
     }

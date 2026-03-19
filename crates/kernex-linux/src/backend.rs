@@ -156,7 +156,7 @@ impl SandboxBackend for LinuxSandboxBackend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mockall::{predicate::*, Sequence};
+    use mockall::Sequence;
 
     fn default_policy() -> FilesystemPolicy {
         FilesystemPolicy::default()

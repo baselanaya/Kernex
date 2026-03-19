@@ -233,7 +233,7 @@ mod tests {
     use std::path::PathBuf;
 
     use kernex_ipc::{JitDecision, Operation, PolicyQuery, Resource, RiskTier, Verdict};
-    use kernex_policy::{FilesystemPolicy, KernexPolicy, NetworkPolicy, NetworkRule};
+    use kernex_policy::{FilesystemPolicy, KernexPolicy, NetworkPolicy};
 
     use super::*;
 

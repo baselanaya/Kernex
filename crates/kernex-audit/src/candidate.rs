@@ -268,7 +268,7 @@ mod tests {
         let c2 = candidate_with_events("agent", vec![AuditEvent::FileRead(path.clone())]);
 
         // Confidence after one session (from c1 alone).
-        let single = merge(&[c1.clone()]).expect("should succeed");
+        let single = merge(std::slice::from_ref(&c1)).expect("should succeed");
         let conf1 = single
             .observations
             .iter()
