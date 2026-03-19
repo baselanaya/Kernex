@@ -1,0 +1,19 @@
+[package]
+name = "kernex-audit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Audit mode — syscall observation, sensitive path detection, policy generation for Kernex"
+
+[dependencies]
+thiserror     = { workspace = true }
+serde         = { workspace = true }
+serde_yaml    = { workspace = true }
+tokio         = { workspace = true, features = ["rt", "macros", "io-util"] }
+tracing       = { workspace = true }
+kernex-policy = { workspace = true }
+
+[dev-dependencies]
+mockall  = { workspace = true }
+tempfile = { workspace = true }
+tokio    = { workspace = true, features = ["test-util", "rt"] }

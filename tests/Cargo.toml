@@ -1,0 +1,11 @@
+[package]
+name = "kernex-integration-tests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "End-to-end integration tests for the kernex CLI"
+publish = false
+
+[dependencies]
+serde_json = { workspace = true }
+tempfile   = { workspace = true }

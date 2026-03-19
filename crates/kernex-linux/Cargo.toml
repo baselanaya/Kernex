@@ -1,0 +1,29 @@
+[package]
+name = "kernex-linux"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Linux sandbox adapter — Landlock LSM + seccomp BPF enforcement for Kernex"
+
+# All kernel API calls (Landlock, seccomp) are confined to this crate.
+# Platform-specific dependencies are gated so the crate remains in the
+# workspace and compiles (as a no-op stub) on other targets.
+
+[dependencies]
+thiserror     = { workspace = true }
+tracing       = { workspace = true }
+kernex-policy = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix         = { workspace = true }
+landlock    = { workspace = true }
+seccompiler = { workspace = true }
+
+[features]
+# Enable integration tests that make real Landlock/seccomp kernel calls.
+# Run with: cargo test -p kernex-linux --features kernel-integration-tests
+kernel-integration-tests = []
+
+[dev-dependencies]
+mockall  = { workspace = true }
+tempfile = { workspace = true }

@@ -1,0 +1,67 @@
+[workspace]
+members = [
+    "crates/kernex-cli",
+    "crates/kernex-core",
+    "crates/kernex-linux",
+    "crates/kernex-macos",
+    "crates/kernex-policy",
+    "crates/kernex-audit",
+    "crates/kernex-ipc",
+    "tests",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT OR Apache-2.0"
+
+# ---------------------------------------------------------------------------
+# Workspace-level dependency pinning.
+# Every crate in this workspace inherits from here to avoid version drift.
+# ---------------------------------------------------------------------------
+
+[workspace.dependencies]
+# --- error handling ---------------------------------------------------------
+thiserror = "2"
+anyhow = "1"
+
+# --- async runtime ----------------------------------------------------------
+# Features are intentionally absent here; each crate declares the minimal
+# feature set it actually needs.
+tokio = { version = "1" }
+
+# --- serialization ----------------------------------------------------------
+serde = { version = "1", features = ["derive"] }
+# NOTE: serde_yaml 0.9 is deprecated upstream. Track the migration to a
+# maintained alternative (e.g. serde-yml) — see docs/adr/ for decision.
+serde_yaml = "0.9"
+serde_json = "1"
+
+# --- CLI --------------------------------------------------------------------
+clap = { version = "4", features = ["derive"] }
+
+# --- observability ----------------------------------------------------------
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+# --- testing ----------------------------------------------------------------
+tempfile = "3"
+mockall = "0.14"
+
+# --- Linux kernel interface (target-gated at the crate level) ---------------
+nix = { version = "0.31", features = ["process", "signal", "user", "fs"] }
+landlock = "0.4"
+seccompiler = "0.5"
+
+# --- macOS Endpoint Security (target-gated at the crate level) --------------
+endpoint-sec = "0.4"
+
+# --- internal crates --------------------------------------------------------
+kernex-policy = { path = "crates/kernex-policy" }
+kernex-core   = { path = "crates/kernex-core" }
+kernex-audit  = { path = "crates/kernex-audit" }
+kernex-ipc    = { path = "crates/kernex-ipc" }
+kernex-linux  = { path = "crates/kernex-linux" }
+kernex-macos  = { path = "crates/kernex-macos" }

@@ -1,0 +1,29 @@
+# Cargo configuration for the Kernex workspace.
+#
+# Linux default: build fully static binaries using musl libc.
+# This requires `musl-tools` to be installed:
+#   sudo apt-get install -y musl-tools
+# and the Rust target:
+#   rustup target add x86_64-unknown-linux-musl
+#
+# macOS developers: this default does NOT apply on macOS; Cargo picks the host
+# target automatically. CI macOS jobs always pass an explicit --target flag to
+# avoid ambiguity.
+
+[build]
+# Use musl on Linux for fully static binaries with zero dynamic dependencies.
+# Overridden automatically by any explicit --target flag.
+# NOTE: This only takes effect on Linux. macOS reads its own host default.
+target = "x86_64-unknown-linux-musl"
+
+# ---------------------------------------------------------------------------
+# Linker configuration per target
+# ---------------------------------------------------------------------------
+
+[target.x86_64-unknown-linux-musl]
+# musl-gcc is provided by the `musl-tools` package on Debian/Ubuntu.
+linker = "musl-gcc"
+
+[target.aarch64-unknown-linux-musl]
+# Cross-compilation linker for ARM64 Linux (used in CI only).
+linker = "aarch64-linux-musl-gcc"

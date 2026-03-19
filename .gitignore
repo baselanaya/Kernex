@@ -1,0 +1,34 @@
+# Build artifacts
+/target/
+dist/
+
+# Cargo lock for libraries (not binaries — we commit Cargo.lock)
+# Cargo.lock is intentionally committed for this binary crate
+
+# IDE and editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# Environment and secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Kernex runtime
+kernex.yaml.bak
+.kernex/
+
+# Test artifacts
+/tmp/

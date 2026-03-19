@@ -1,0 +1,14 @@
+[package]
+name = "kernex-policy"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Policy types, YAML parsing, validation, and scoring for Kernex"
+
+[dependencies]
+serde     = { workspace = true }
+serde_yaml = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

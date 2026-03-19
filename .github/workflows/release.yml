@@ -1,0 +1,214 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+# ---------------------------------------------------------------------------
+# Job dependency chain:
+#   test-and-lint
+#   +-- build-linux   (needs: test-and-lint)
+#   +-- build-macos   (needs: test-and-lint)
+#       release       (needs: build-linux, build-macos)
+# ---------------------------------------------------------------------------
+
+jobs:
+  # 1. Test and lint
+  test-and-lint:
+    name: Test & Clippy (Linux musl)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install musl toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y musl-tools
+
+      - name: Install Rust stable + musl target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+          components: clippy, rustfmt
+
+      - name: Cache Cargo registry and build artefacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-musl-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-musl-
+
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy -- -D warnings (musl)
+        run: cargo clippy --workspace --all-targets --target x86_64-unknown-linux-musl -- -D warnings
+
+      - name: cargo test (musl)
+        run: |
+          cargo build --workspace --target x86_64-unknown-linux-musl
+          KERNEX_BIN="$(pwd)/target/x86_64-unknown-linux-musl/debug/kernex" \
+            cargo test --workspace --target x86_64-unknown-linux-musl
+
+  # 2a. Build: static Linux binary
+  build-linux:
+    name: Build static Linux binary (musl)
+    runs-on: ubuntu-22.04
+    needs: test-and-lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install musl toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y musl-tools
+
+      - name: Install Rust stable + musl target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - name: Cache Cargo registry and build artefacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-musl-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-musl-release-
+            ${{ runner.os }}-musl-
+
+      - name: Build release binary (musl)
+        run: |
+          cargo build --release --target x86_64-unknown-linux-musl \
+            -p kernex-cli
+
+      - name: Verify zero dynamic dependencies
+        run: |
+          bin="target/x86_64-unknown-linux-musl/release/kernex"
+          echo "=== ldd output ==="
+          ldd "$bin" || true
+          # A fully static musl binary prints "not a dynamic executable" or
+          # "statically linked" -- both are acceptable from ldd.
+          if ldd "$bin" 2>&1 | grep -qE 'linux-vdso|libpthread|libc\.so'; then
+            echo "ERROR: binary has unexpected dynamic dependencies"
+            ldd "$bin"
+            exit 1
+          fi
+          echo "Binary is fully static"
+          file "$bin"
+
+      - name: Rename artifact
+        run: |
+          cp target/x86_64-unknown-linux-musl/release/kernex \
+             kernex-x86_64-unknown-linux-musl
+
+      - name: Upload Linux binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernex-x86_64-unknown-linux-musl
+          path: kernex-x86_64-unknown-linux-musl
+          if-no-files-found: error
+
+  # 2b. Build: macOS universal binary
+  build-macos:
+    name: Build macOS universal binary
+    runs-on: macos-14
+    needs: test-and-lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable + macOS targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
+
+      - name: Cache Cargo registry and build artefacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-macos-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-macos-release-
+
+      - name: Build x86_64 macOS binary
+        run: |
+          cargo build --release --target x86_64-apple-darwin \
+            -p kernex-cli
+
+      - name: Build aarch64 macOS binary
+        run: |
+          cargo build --release --target aarch64-apple-darwin \
+            -p kernex-cli
+
+      - name: Create universal binary with lipo
+        run: |
+          lipo -create \
+            target/x86_64-apple-darwin/release/kernex \
+            target/aarch64-apple-darwin/release/kernex \
+            -output kernex-universal-apple-darwin
+          lipo -info kernex-universal-apple-darwin
+
+      - name: Upload macOS universal binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernex-universal-apple-darwin
+          path: kernex-universal-apple-darwin
+          if-no-files-found: error
+
+  # 3. Create GitHub Release
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-22.04
+    needs: [build-linux, build-macos]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Linux binary
+        uses: actions/download-artifact@v4
+        with:
+          name: kernex-x86_64-unknown-linux-musl
+          path: dist/
+
+      - name: Download macOS binary
+        uses: actions/download-artifact@v4
+        with:
+          name: kernex-universal-apple-darwin
+          path: dist/
+
+      - name: Make binaries executable
+        run: chmod +x dist/kernex-x86_64-unknown-linux-musl dist/kernex-universal-apple-darwin
+
+      - name: Generate checksums.txt
+        working-directory: dist
+        run: |
+          # Single checksums.txt consumed by install.sh for verification.
+          sha256sum kernex-x86_64-unknown-linux-musl kernex-universal-apple-darwin > checksums.txt
+          echo "=== checksums.txt ==="
+          cat checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Kernex ${{ github.ref_name }}"
+          generate_release_notes: true
+          files: |
+            dist/kernex-x86_64-unknown-linux-musl
+            dist/kernex-universal-apple-darwin
+            dist/checksums.txt
