@@ -182,7 +182,7 @@ pub(crate) fn build_client(policy: &FilesystemPolicy) -> Result<EsHandle, MacosE
     // has lifetime 'static.  The framework calls the handler from its own
     // internal thread on every subscribed AUTH event.
     let mut client = endpoint_sec::Client::new(
-        move |client: &mut endpoint_sec::Client<'_>, msg: endpoint_sec::Message<'_>| {
+        move |client: &mut endpoint_sec::Client<'_>, msg: endpoint_sec::Message| {
             handle_auth_event(client, &msg, &eval_ref, &pid_ref, &tx);
         },
     )
@@ -251,7 +251,7 @@ pub(crate) fn activate_for_pid(
 /// **must** complete well within the ~30 s kernel deadline.
 fn handle_auth_event(
     client: &mut endpoint_sec::Client<'_>,
-    msg: &endpoint_sec::Message<'_>,
+    msg: &endpoint_sec::Message,
     evaluator: &Arc<PolicyEvaluator>,
     agent_pid: &Arc<AtomicI32>,
     audit_tx: &SyncSender<AuditRecord>,
@@ -311,7 +311,7 @@ fn handle_auth_event(
 /// Unknown or unhandled event types fail-open (`allowed = true`) — we only
 /// enforce what we explicitly understand.
 fn evaluate_event(
-    msg: &endpoint_sec::Message<'_>,
+    msg: &endpoint_sec::Message,
     evaluator: &PolicyEvaluator,
 ) -> (bool, Option<PathBuf>, bool) {
     let Some(event) = msg.event() else {
