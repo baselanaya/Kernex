@@ -96,7 +96,7 @@ pub(crate) struct EsHandle {
     ///
     /// The ES framework calls our handler from its own internal thread;
     /// `Client` does not need to be called from the CLI thread after creation.
-    client: endpoint_sec::Client<'static>,
+    _client: endpoint_sec::Client<'static>,
 
     /// The agent PID being monitored.
     ///
@@ -111,7 +111,7 @@ pub(crate) struct EsHandle {
     _audit_thread: std::thread::JoinHandle<()>,
 }
 
-// SAFETY: `Client<'static>` wraps an `es_client_t` opaque C pointer.
+// SAFETY: `_client: Client<'static>` wraps an `es_client_t` opaque C pointer.
 // The ES framework owns the thread that calls our handler — no Rust-side
 // concurrent access to `Client` methods occurs. `EsHandle` is created on the
 // CLI thread and held there (inside `EsMonitorActive`) until the agent exits.
@@ -205,7 +205,7 @@ pub(crate) fn build_client(policy: &FilesystemPolicy) -> Result<EsHandle, MacosE
         .map_err(|e| MacosError::Subscribe(e.to_string()))?;
 
     Ok(EsHandle {
-        client,
+        _client: client,
         agent_pid,
         _audit_tx: audit_tx,
         _audit_thread: audit_thread,
