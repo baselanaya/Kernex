@@ -37,7 +37,7 @@ pub struct SeccompApplied(());
 
 impl SeccompApplied {
     /// Construct the marker. Only callable within this crate.
-    #[cfg(target_os = "linux")]
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
     pub(crate) fn new() -> Self {
         Self(())
     }
