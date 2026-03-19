@@ -13,7 +13,8 @@
 [build]
 # Use musl on Linux for fully static binaries with zero dynamic dependencies.
 # Overridden automatically by any explicit --target flag.
-# NOTE: This only takes effect on Linux. macOS reads its own host default.
+# NOTE: This applies on all platforms. macOS CI jobs must pass --target
+# explicitly (e.g. --target aarch64-apple-darwin) to override this default.
 target = "x86_64-unknown-linux-musl"
 
 # ---------------------------------------------------------------------------
