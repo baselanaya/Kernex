@@ -33,7 +33,9 @@
 
 use std::fs;
 
-use kernex_integration_tests::{kernex_cmd, LINUX_EXEC_POLICY, MINIMAL_POLICY};
+#[cfg(target_os = "linux")]
+use kernex_integration_tests::LINUX_EXEC_POLICY;
+use kernex_integration_tests::{kernex_cmd, MINIMAL_POLICY};
 use serde_json::Value;
 use tempfile::tempdir;
 
