@@ -429,8 +429,16 @@ fn build_path(directory: &OsStr, filename: &OsStr) -> PathBuf {
 /// - `ES_NEW_CLIENT_RESULT_ERR_NOT_PERMITTED` (SIP prevents non-Apple ES)
 /// - `ES_NEW_CLIENT_RESULT_ERR_NOT_PRIVILEGED` (unsigned / wrong sandbox)
 fn map_client_error(e: endpoint_sec::sys::NewClientError) -> MacosError {
+    // `NewClientError` may Display as an enum variant name like
+    // "ES_NEW_CLIENT_RESULT_ERR_NOT_PRIVILEGED" (underscores) or as a
+    // human-readable string like "not entitled" (spaces). Check both forms.
     let msg = e.to_string().to_ascii_lowercase();
-    if msg.contains("entit") || msg.contains("not permit") || msg.contains("not privil") {
+    let is_entitlement_error = msg.contains("entit")
+        || msg.contains("not_permit")
+        || msg.contains("not permit")
+        || msg.contains("not_privil")
+        || msg.contains("not privil");
+    if is_entitlement_error {
         MacosError::EntitlementMissing
     } else {
         MacosError::ClientCreate(e.to_string())
