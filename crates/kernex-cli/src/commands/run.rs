@@ -305,6 +305,9 @@ mod tests {
         assert!(result.is_err());
     }
 
+    // macOS: requires com.apple.developer.endpoint-security.client entitlement — not
+    // available on GitHub Actions runners. Skip on macOS to prevent CI failures.
+    #[cfg_attr(target_os = "macos", ignore)]
     #[tokio::test]
     async fn test_run_valid_command_with_policy_succeeds() {
         let dir = tempfile::tempdir().unwrap();
