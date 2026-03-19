@@ -11,9 +11,11 @@
 
 use std::fs;
 
+use kernex_integration_tests::kernex_cmd;
+#[cfg(target_os = "linux")]
+use kernex_integration_tests::LINUX_EXEC_POLICY;
 #[cfg(not(target_os = "linux"))]
 use kernex_integration_tests::MINIMAL_POLICY;
-use kernex_integration_tests::{kernex_cmd, LINUX_EXEC_POLICY};
 use tempfile::tempdir;
 
 // ---------------------------------------------------------------------------
