@@ -44,12 +44,14 @@ jobs:
       - name: cargo clippy
         run: cargo clippy --workspace --all-targets --target x86_64-unknown-linux-musl -- -D warnings
 
-      - name: cargo test
+      - name: cargo test (native glibc)
         run: |
-          cargo build --workspace --target x86_64-unknown-linux-musl
-          KERNEX_BIN="$(pwd)/target/x86_64-unknown-linux-musl/debug/kernex" \
-          RUST_MIN_STACK=8388608 \
-            cargo test --workspace --target x86_64-unknown-linux-musl
+          cargo build
+          KERNEX_BIN="$(pwd)/target/debug/kernex" \
+            cargo test --workspace
+
+      - name: cargo build (musl static binary)
+        run: cargo build --workspace --target x86_64-unknown-linux-musl
 
   test-macos:
     name: Test & Lint (macOS)
