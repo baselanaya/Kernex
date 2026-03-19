@@ -81,7 +81,10 @@ jobs:
         run: cargo clippy --workspace --all-targets --target aarch64-apple-darwin -- -D warnings
 
       - name: cargo test
-        run: cargo test --workspace --target aarch64-apple-darwin
+        run: |
+          cargo build --target aarch64-apple-darwin
+          KERNEX_BIN="$(pwd)/target/aarch64-apple-darwin/debug/kernex" \
+            cargo test --workspace --target aarch64-apple-darwin
 
   audit:
     name: Security Audit
