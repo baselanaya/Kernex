@@ -35,11 +35,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::mpsc::{self, SyncSender};
 use std::sync::Arc;
 
-use endpoint_sec::sys::{
-    ES_AUTH_RESULT_ALLOW, ES_AUTH_RESULT_DENY, ES_EVENT_TYPE_AUTH_CREATE, ES_EVENT_TYPE_AUTH_EXEC,
-    ES_EVENT_TYPE_AUTH_MMAP, ES_EVENT_TYPE_AUTH_OPEN, ES_EVENT_TYPE_AUTH_RENAME,
-    ES_EVENT_TYPE_AUTH_UNLINK,
-};
+use endpoint_sec::sys::{es_auth_result_t, es_event_type_t};
 use endpoint_sec::{Event, EventCreateDestinationFile, EventRenameDestinationFile};
 use kernex_policy::FilesystemPolicy;
 
@@ -199,12 +195,12 @@ pub(crate) fn build_client(policy: &FilesystemPolicy) -> Result<EsHandle, MacosE
     // O_WRONLY / O_RDWR flags in the `fflag` field.
     client
         .subscribe(&[
-            ES_EVENT_TYPE_AUTH_OPEN,
-            ES_EVENT_TYPE_AUTH_CREATE,
-            ES_EVENT_TYPE_AUTH_UNLINK,
-            ES_EVENT_TYPE_AUTH_RENAME,
-            ES_EVENT_TYPE_AUTH_EXEC,
-            ES_EVENT_TYPE_AUTH_MMAP,
+            es_event_type_t::ES_EVENT_TYPE_AUTH_OPEN,
+            es_event_type_t::ES_EVENT_TYPE_AUTH_CREATE,
+            es_event_type_t::ES_EVENT_TYPE_AUTH_UNLINK,
+            es_event_type_t::ES_EVENT_TYPE_AUTH_RENAME,
+            es_event_type_t::ES_EVENT_TYPE_AUTH_EXEC,
+            es_event_type_t::ES_EVENT_TYPE_AUTH_MMAP,
         ])
         .map_err(|e| MacosError::Subscribe(e.to_string()))?;
 
@@ -268,7 +264,9 @@ fn handle_auth_event(
     // cache uses the path as the key and the same path may later warrant a
     // deny for the actual agent.
     if monitored == NO_AGENT_PID || event_pid != monitored {
-        if let Err(e) = client.respond_auth_result(msg, ES_AUTH_RESULT_ALLOW, false) {
+        if let Err(e) =
+            client.respond_auth_result(msg, es_auth_result_t::ES_AUTH_RESULT_ALLOW, false)
+        {
             tracing::error!("ES respond failed for non-agent event: {e}");
         }
         return;
@@ -278,9 +276,9 @@ fn handle_auth_event(
     let (allowed, path_opt, writable) = evaluate_event(msg, evaluator);
 
     let result = if allowed {
-        ES_AUTH_RESULT_ALLOW
+        es_auth_result_t::ES_AUTH_RESULT_ALLOW
     } else {
-        ES_AUTH_RESULT_DENY
+        es_auth_result_t::ES_AUTH_RESULT_DENY
     };
 
     // Respond BEFORE any logging — the kernel is waiting.
@@ -430,7 +428,7 @@ fn build_path(directory: &OsStr, filename: &OsStr) -> PathBuf {
 /// - `ES_NEW_CLIENT_RESULT_ERR_NOT_ENTITLED` (missing entitlement)
 /// - `ES_NEW_CLIENT_RESULT_ERR_NOT_PERMITTED` (SIP prevents non-Apple ES)
 /// - `ES_NEW_CLIENT_RESULT_ERR_NOT_PRIVILEGED` (unsigned / wrong sandbox)
-fn map_client_error(e: endpoint_sec::NewClientError) -> MacosError {
+fn map_client_error(e: endpoint_sec::sys::NewClientError) -> MacosError {
     let msg = e.to_string().to_ascii_lowercase();
     if msg.contains("entit") || msg.contains("not permit") || msg.contains("not privil") {
         MacosError::EntitlementMissing
