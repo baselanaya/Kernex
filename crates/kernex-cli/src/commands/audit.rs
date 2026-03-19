@@ -338,7 +338,8 @@ mod tests {
         // Accept either form; the important invariant is that the command name
         // is present and the config file path is not.
         assert!(
-            content.contains("agent_name:") && (content.contains("'true'") || content.contains("true")),
+            content.contains("agent_name:")
+                && (content.contains("'true'") || content.contains("true")),
             "agent_name must be the command ('true'), not the config path; got:\n{content}"
         );
         assert!(
