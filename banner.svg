@@ -1,0 +1,259 @@
+<svg viewBox="0 0 900 220" xmlns="http://www.w3.org/2000/svg" width="900" height="220">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;700&amp;display=swap');
+    </style>
+
+    <linearGradient id="brand" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#9d733b"/>
+      <stop offset="50%"  stop-color="#c4854a"/>
+      <stop offset="100%" stop-color="#b85c3a"/>
+    </linearGradient>
+
+    <linearGradient id="brand-v" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#c4854a"/>
+      <stop offset="100%" stop-color="#9d733b"/>
+    </linearGradient>
+
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#151210"/>
+      <stop offset="100%" stop-color="#191614"/>
+    </linearGradient>
+
+    <linearGradient id="amber-fade" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#9d733b" stop-opacity="0.18"/>
+      <stop offset="60%"  stop-color="#9d733b" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#9d733b" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="glow">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <filter id="glow-heavy">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <clipPath id="clip">
+      <rect width="900" height="220" rx="6"/>
+    </clipPath>
+  </defs>
+
+  <!-- Base -->
+  <rect width="900" height="220" fill="url(#bg-grad)" rx="6"/>
+  <g clip-path="url(#clip)">
+
+    <!-- Left ambient wash -->
+    <rect x="0" y="0" width="520" height="220" fill="url(#amber-fade)"/>
+
+    <!-- Scanline texture — tight horizontal bands -->
+    <g opacity="0.03" fill="#c4854a">
+      <rect x="0" y="0"   width="900" height="1"/>
+      <rect x="0" y="4"   width="900" height="1"/>
+      <rect x="0" y="8"   width="900" height="1"/>
+      <rect x="0" y="12"  width="900" height="1"/>
+      <rect x="0" y="16"  width="900" height="1"/>
+      <rect x="0" y="20"  width="900" height="1"/>
+      <rect x="0" y="24"  width="900" height="1"/>
+      <rect x="0" y="28"  width="900" height="1"/>
+      <rect x="0" y="32"  width="900" height="1"/>
+      <rect x="0" y="36"  width="900" height="1"/>
+      <rect x="0" y="40"  width="900" height="1"/>
+      <rect x="0" y="44"  width="900" height="1"/>
+      <rect x="0" y="48"  width="900" height="1"/>
+      <rect x="0" y="52"  width="900" height="1"/>
+      <rect x="0" y="56"  width="900" height="1"/>
+      <rect x="0" y="60"  width="900" height="1"/>
+      <rect x="0" y="64"  width="900" height="1"/>
+      <rect x="0" y="68"  width="900" height="1"/>
+      <rect x="0" y="72"  width="900" height="1"/>
+      <rect x="0" y="76"  width="900" height="1"/>
+      <rect x="0" y="80"  width="900" height="1"/>
+      <rect x="0" y="84"  width="900" height="1"/>
+      <rect x="0" y="88"  width="900" height="1"/>
+      <rect x="0" y="92"  width="900" height="1"/>
+      <rect x="0" y="96"  width="900" height="1"/>
+      <rect x="0" y="100" width="900" height="1"/>
+      <rect x="0" y="104" width="900" height="1"/>
+      <rect x="0" y="108" width="900" height="1"/>
+      <rect x="0" y="112" width="900" height="1"/>
+      <rect x="0" y="116" width="900" height="1"/>
+      <rect x="0" y="120" width="900" height="1"/>
+      <rect x="0" y="124" width="900" height="1"/>
+      <rect x="0" y="128" width="900" height="1"/>
+      <rect x="0" y="132" width="900" height="1"/>
+      <rect x="0" y="136" width="900" height="1"/>
+      <rect x="0" y="140" width="900" height="1"/>
+      <rect x="0" y="144" width="900" height="1"/>
+      <rect x="0" y="148" width="900" height="1"/>
+      <rect x="0" y="152" width="900" height="1"/>
+      <rect x="0" y="156" width="900" height="1"/>
+      <rect x="0" y="160" width="900" height="1"/>
+      <rect x="0" y="164" width="900" height="1"/>
+      <rect x="0" y="168" width="900" height="1"/>
+      <rect x="0" y="172" width="900" height="1"/>
+      <rect x="0" y="176" width="900" height="1"/>
+      <rect x="0" y="180" width="900" height="1"/>
+      <rect x="0" y="184" width="900" height="1"/>
+      <rect x="0" y="188" width="900" height="1"/>
+      <rect x="0" y="192" width="900" height="1"/>
+      <rect x="0" y="196" width="900" height="1"/>
+      <rect x="0" y="200" width="900" height="1"/>
+      <rect x="0" y="204" width="900" height="1"/>
+      <rect x="0" y="208" width="900" height="1"/>
+      <rect x="0" y="212" width="900" height="1"/>
+      <rect x="0" y="216" width="900" height="1"/>
+    </g>
+
+    <!-- ══ TERMINAL WINDOW BAR ══ -->
+    <rect x="0" y="0" width="900" height="32" fill="#1e1a17"/>
+    <rect x="0" y="32" width="900" height="1" fill="url(#brand)" opacity="0.5"/>
+
+    <!-- Terminal dots -->
+    <circle cx="20" cy="16" r="5" fill="#b85c3a" opacity="0.85"/>
+    <circle cx="36" cy="16" r="5" fill="#9d733b" opacity="0.85"/>
+    <circle cx="52" cy="16" r="5" fill="#3a3530" opacity="0.85"/>
+
+    <!-- Terminal title bar text -->
+    <text x="450" y="21"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="11" font-weight="400"
+      fill="#5a4a38" text-anchor="middle" letter-spacing="2"
+    >kernex — zero-trust execution environment</text>
+
+    <!-- ══ MAIN CONTENT AREA ══ -->
+
+    <!-- Prompt line top-left -->
+    <text x="32" y="72"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="11" font-weight="400"
+      fill="#5a4a38" letter-spacing="1"
+    >$ kernex run -- python agent.py</text>
+
+    <!-- Cursor blink block -->
+    <rect x="280" y="59" width="8" height="14" fill="#c4854a" opacity="0.7"/>
+
+    <!-- ══ WORDMARK ══ -->
+    <text x="32" y="148"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="72" font-weight="700"
+      fill="url(#brand)"
+      filter="url(#glow-heavy)"
+      letter-spacing="-1"
+    >KERNEX</text>
+
+    <!-- Tagline below wordmark -->
+    <text x="34" y="174"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="10.5" font-weight="300"
+      fill="#5a4a38" letter-spacing="3"
+    >ZERO-TRUST  ·  OS-LEVEL  ·  AI AGENT SANDBOX</text>
+
+    <!-- ══ VERTICAL DIVIDER ══ -->
+    <rect x="570" y="44" width="1" height="164" fill="#9d733b" opacity="0.15"/>
+
+    <!-- ══ STAT BLOCK — right panel ══ -->
+
+    <!-- Stat row labels — monospace small caps style -->
+    <!-- Row 1 -->
+    <text x="594" y="68"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="9" fill="#5a4a38" letter-spacing="2"
+    >BOOT_TIME</text>
+    <text x="594" y="88"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="24" font-weight="700"
+      fill="#c4854a" filter="url(#glow)"
+    >&lt; 2ms</text>
+
+    <!-- Separator -->
+    <rect x="594" y="100" width="100" height="1" fill="#9d733b" opacity="0.2"/>
+
+    <!-- Row 2 -->
+    <text x="594" y="116"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="9" fill="#5a4a38" letter-spacing="2"
+    >RAM_OVERHEAD</text>
+    <text x="594" y="136"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="24" font-weight="700"
+      fill="#c4854a" filter="url(#glow)"
+    >~15MB</text>
+
+    <!-- Separator -->
+    <rect x="594" y="148" width="100" height="1" fill="#9d733b" opacity="0.2"/>
+
+    <!-- Row 3 -->
+    <text x="594" y="164"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="9" fill="#5a4a38" letter-spacing="2"
+    >PRIVILEGES</text>
+    <text x="594" y="184"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="24" font-weight="700"
+      fill="#9d733b" filter="url(#glow)"
+    >USER</text>
+
+    <!-- Right column -->
+    <rect x="748" y="44" width="1" height="164" fill="#9d733b" opacity="0.1"/>
+
+    <!-- Col 2 Row 1 -->
+    <text x="768" y="68"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="9" fill="#5a4a38" letter-spacing="2"
+    >INSTALL</text>
+    <text x="768" y="88"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="24" font-weight="700"
+      fill="#c4854a" filter="url(#glow)"
+    >1 BIN</text>
+
+    <rect x="768" y="100" width="100" height="1" fill="#9d733b" opacity="0.2"/>
+
+    <!-- Col 2 Row 2 -->
+    <text x="768" y="116"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="9" fill="#5a4a38" letter-spacing="2"
+    >LANGUAGE</text>
+    <text x="768" y="136"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="24" font-weight="700"
+      fill="#c4854a" filter="url(#glow)"
+    >RUST</text>
+
+    <rect x="768" y="148" width="100" height="1" fill="#9d733b" opacity="0.2"/>
+
+    <!-- Col 2 Row 3 -->
+    <text x="768" y="164"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="9" fill="#5a4a38" letter-spacing="2"
+    >STATUS</text>
+    <text x="768" y="184"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="24" font-weight="700"
+      fill="#9d733b" filter="url(#glow)"
+    >v0.1</text>
+
+    <!-- ══ BOTTOM BAR ══ -->
+    <rect x="0" y="207" width="900" height="1" fill="url(#brand)" opacity="0.3"/>
+    <rect x="0" y="208" width="900" height="12" fill="#1e1a17"/>
+
+    <text x="32" y="218"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="8.5" fill="#3a2e24" letter-spacing="1.5"
+    >don't trust the model. trust the kernel.</text>
+
+    <text x="868" y="218"
+      font-family="'Geist Mono', 'Courier New', monospace"
+      font-size="8.5" fill="#3a2e24" letter-spacing="1" text-anchor="end"
+    >maximlabs.co</text>
+
+    <!-- Top accent bar -->
+    <rect x="0" y="0" width="900" height="2" fill="url(#brand)" opacity="0.8"/>
+    <!-- Bottom accent bar -->
+    <rect x="0" y="218" width="900" height="2" fill="url(#brand)" opacity="0.4"/>
+
+  </g>
+</svg>
