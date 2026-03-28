@@ -257,4 +257,4 @@ For commercial inquiries, telemetry dashboard access, or enterprise SDK licensin
 
 ---
 
-*Built by [Maximlabs.co](https://maximlabs.co)*
+*Built by Basel Anaya - [Maximlabs.co](https://maximlabs.co)*
