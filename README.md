@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="./banner.svg" alt="Kernex" width="100%"/>
+</div>
+
 # Kernex
 
 **The zero-trust execution environment for the agentic era.**
