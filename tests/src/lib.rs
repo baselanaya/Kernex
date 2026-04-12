@@ -59,6 +59,9 @@ pub fn kernex_bin() -> PathBuf {
 ///
 /// Used by tests that run `kernex run` on Linux, where Landlock is active and
 /// restricts the binary's ability to open any file not in allow_read.
+///
+/// Note: `/lib32` is intentionally omitted — it is absent on modern 64-bit
+/// systems and Landlock rejects any `allow_read` path that does not exist.
 pub const LINUX_EXEC_POLICY: &str = "\
 agent_name: test-agent
 filesystem:
@@ -67,7 +70,6 @@ filesystem:
     - /bin
     - /lib
     - /lib64
-    - /lib32
     - /usr/lib
     - /etc
   block_hidden: true

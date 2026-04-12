@@ -66,7 +66,6 @@ filesystem:
     - /bin
     - /lib
     - /lib64
-    - /lib32
     - /usr/lib
     - /etc
     - /
@@ -124,7 +123,6 @@ filesystem:
     - /bin
     - /lib
     - /lib64
-    - /lib32
     - /usr/lib
     - /etc
     - /

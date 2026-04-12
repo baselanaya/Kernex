@@ -143,6 +143,7 @@ fn test_landlock_allows_read_inside_policy() {
 
     // Build the policy inline so `dir.path()` appears under allow_read
     // (not after block_hidden, which would produce invalid YAML).
+    // Note: /lib32 is intentionally omitted — absent on modern 64-bit systems.
     let policy = format!(
         "\
 agent_name: test-agent
@@ -152,7 +153,6 @@ filesystem:
     - /bin
     - /lib
     - /lib64
-    - /lib32
     - /usr/lib
     - /etc
     - {dir}
@@ -220,6 +220,7 @@ fn test_landlock_allows_write_inside_policy() {
     let target = dir.path().join("output.txt");
 
     // Build policy that includes dir.path() in allow_write (also read).
+    // Note: /lib32 is intentionally omitted — absent on modern 64-bit systems.
     let policy = format!(
         "\
 agent_name: test-agent
@@ -229,7 +230,6 @@ filesystem:
     - /bin
     - /lib
     - /lib64
-    - /lib32
     - /usr/lib
     - /etc
     - {dir}

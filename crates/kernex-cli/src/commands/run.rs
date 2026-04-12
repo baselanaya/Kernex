@@ -102,26 +102,39 @@ fn spawn_with_enforcement(
 ) -> anyhow::Result<SpawnResult> {
     use std::os::unix::process::CommandExt as _;
 
-    use kernex_linux::{setup_sandbox, LinuxSandboxBackend, SandboxBackend as _};
+    use kernex_linux::{setup_sandbox, LandlockError, LinuxSandboxBackend, SandboxBackend as _};
 
     // Pre-fork: probe Landlock support WITHOUT calling restrict_self.
     // This tells us which enforcement tier to report and whether to fail fast.
-    let landlock_available = LinuxSandboxBackend
-        .build_landlock_ruleset(&policy.filesystem)
-        .is_ok();
+    let landlock_probe = LinuxSandboxBackend.build_landlock_ruleset(&policy.filesystem);
+    let landlock_available = landlock_probe.is_ok();
 
     if !landlock_available && strict {
+        let reason = match landlock_probe {
+            Err(LandlockError::NotSupported) => {
+                "Landlock LSM is not supported on this kernel.".to_string()
+            }
+            Err(ref e) => format!("Landlock ruleset build failed: {e}"),
+            Ok(_) => unreachable!(),
+        };
         anyhow::bail!(
-            "Enforcement failed: Landlock LSM is not supported on this kernel. \
-             Remove --strict to fall back to seccomp-only enforcement."
+            "Enforcement failed: {reason} Remove --strict to fall back to seccomp-only \
+             enforcement."
         );
     }
 
     if !landlock_available {
-        out.warn(
-            "Landlock LSM is not available on this kernel; \
-             falling back to seccomp-only enforcement.",
-        );
+        match landlock_probe {
+            Err(LandlockError::NotSupported) => out.warn(
+                "Landlock LSM is not available on this kernel; \
+                 falling back to seccomp-only enforcement.",
+            ),
+            Err(ref e) => out.warn(&format!(
+                "Landlock ruleset build failed ({e}); \
+                 falling back to seccomp-only enforcement.",
+            )),
+            Ok(_) => {}
+        }
     }
 
     let fs_policy = policy.filesystem.clone();

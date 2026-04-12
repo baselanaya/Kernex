@@ -13,8 +13,8 @@
 
 use kernex_policy::FilesystemPolicy;
 use landlock::{
-    Access, AccessFs, PathBeneath, PathFd, RestrictSelfError, Ruleset, RulesetAttr,
-    RulesetCreatedAttr, RulesetError, ABI,
+    Access, AccessFs, CreateRulesetError, PathBeneath, PathFd, RestrictSelfError, Ruleset,
+    RulesetAttr, RulesetCreatedAttr, RulesetError, ABI,
 };
 
 use crate::error::LandlockError;
@@ -106,7 +106,20 @@ pub fn build_ruleset(policy: &FilesystemPolicy) -> Result<LandlockBuilt, Landloc
 // ---------------------------------------------------------------------------
 
 /// Map any `RulesetError` (not from `restrict_self`) into `LandlockError`.
+///
+/// If the underlying OS error is `ENOSYS` (syscall not implemented) or
+/// `EOPNOTSUPP` (operation not supported), the kernel does not have Landlock
+/// compiled in or enabled — map to `NotSupported` so `setup_sandbox` can
+/// gracefully degrade to seccomp-only enforcement.
 fn ruleset_error(e: RulesetError) -> LandlockError {
+    if let RulesetError::CreateRuleset(CreateRulesetError::CreateRulesetCall { ref source, .. }) = e {
+        let errno = source.raw_os_error();
+        // ENOSYS = Landlock syscall not compiled into the kernel.
+        // EOPNOTSUPP = Landlock compiled in but not active/loaded.
+        if matches!(errno, Some(nix::libc::ENOSYS) | Some(nix::libc::EOPNOTSUPP)) {
+            return LandlockError::NotSupported;
+        }
+    }
     LandlockError::RulesetCreate(e.to_string())
 }
 
