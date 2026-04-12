@@ -112,7 +112,10 @@ pub fn build_ruleset(policy: &FilesystemPolicy) -> Result<LandlockBuilt, Landloc
 /// compiled in or enabled — map to `NotSupported` so `setup_sandbox` can
 /// gracefully degrade to seccomp-only enforcement.
 fn ruleset_error(e: RulesetError) -> LandlockError {
-    if let RulesetError::CreateRuleset(CreateRulesetError::CreateRulesetCall { ref source, .. }) = e {
+    if let RulesetError::CreateRuleset(CreateRulesetError::CreateRulesetCall {
+        ref source, ..
+    }) = e
+    {
         let errno = source.raw_os_error();
         // ENOSYS = Landlock syscall not compiled into the kernel.
         // EOPNOTSUPP = Landlock compiled in but not active/loaded.

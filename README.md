@@ -63,10 +63,67 @@ Works with any framework, any language, and any local agent: Claude Code, AutoGe
 ### Installation
 
 ```bash
-curl -fsSL https://kernex.sh/install | bash
+curl -fsSL https://raw.githubusercontent.com/baselanaya/Kernex/main/install.sh | sh
 ```
 
 *(Downloads the `kernex` binary to `/usr/local/bin`. No other dependencies required.)*
+
+---
+
+## Build from Source
+
+Kernex compiles to a **fully static binary** (musl on Linux, native on macOS) with zero runtime dependencies.
+
+### Prerequisites
+
+| Tool | How to install |
+|---|---|
+| Rust 1.75+ | `curl https://sh.rustup.rs -sSf \| sh` |
+| musl toolchain (Linux only) | `sudo apt-get install musl-tools` |
+| musl Rust target (Linux only) | `rustup target add x86_64-unknown-linux-musl` |
+
+### Linux — static musl binary
+
+```bash
+git clone https://github.com/baselanaya/Kernex.git
+cd Kernex
+cargo build --release --target x86_64-unknown-linux-musl
+```
+
+The binary is at `target/x86_64-unknown-linux-musl/release/kernex`.
+
+Optionally strip it to cut the size in half:
+
+```bash
+strip target/x86_64-unknown-linux-musl/release/kernex
+# Install globally
+sudo cp target/x86_64-unknown-linux-musl/release/kernex /usr/local/bin/kernex
+```
+
+### macOS — native binary
+
+```bash
+git clone https://github.com/baselanaya/Kernex.git
+cd Kernex
+cargo build --release
+```
+
+The binary is at `target/release/kernex`.
+
+> **Note:** macOS enforcement requires the `com.apple.developer.endpoint-security.client` entitlement. Without it, Kernex runs in degraded mode (no Endpoint Security sandboxing). See Apple's [Endpoint Security documentation](https://developer.apple.com/documentation/endpointsecurity) for entitlement provisioning.
+
+### Run the test suite
+
+```bash
+# Unit + integration tests (uses the musl binary automatically on Linux)
+cargo test
+
+# Lint
+cargo clippy -- -D warnings
+
+# Format check
+cargo fmt --all -- --check
+```
 
 ### Step 1 — Audit Mode (First Run)
 
