@@ -20,7 +20,7 @@ We are committed to making participation in the Kernex project a respectful, har
 
 ## Enforcement
 
-Instances of unacceptable behavior may be reported to the project maintainers at **security@maximlabs.co**. All reports will be reviewed and investigated promptly.
+Instances of unacceptable behavior may be reported to the project maintainers at **support@maximlabs.co**. All reports will be reviewed and investigated promptly.
 
 Maintainers have the right to remove, edit, or reject contributions that do not align with this Code of Conduct.
 
