@@ -25,7 +25,7 @@ set -euo pipefail
 # Constants
 # ---------------------------------------------------------------------------
 
-REPO="kernex-io/kernex"
+REPO="baselanaya/Kernex"
 RELEASES_URL="https://github.com/${REPO}/releases"
 API_URL="https://api.github.com/repos/${REPO}/releases/latest"
 DEFAULT_INSTALL_DIR="/usr/local/bin"

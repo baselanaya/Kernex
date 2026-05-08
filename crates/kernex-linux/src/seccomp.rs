@@ -160,11 +160,28 @@ pub fn build_seccomp_filter() -> Result<BpfProgram, SeccompError> {
 
 /// Build and install the seccomp filter on the calling thread.
 ///
+/// # Architecture gate
+///
+/// Kernex's seccomp filter today only supports x86_64 — its mandatory
+/// blocklist references syscall numbers (`SYS_clone3`, `SYS_kexec_load`, …)
+/// whose values are architecture-specific, and the filter prepends an
+/// `AUDIT_ARCH_X86_64` check as the first BPF instruction. On any other
+/// architecture this check fires `KillProcess` for every syscall, silently
+/// SIGKILLing the agent. We refuse to install the filter on unsupported
+/// architectures with a clear error so the user sees a real diagnostic
+/// rather than a confusing crash.
+///
 /// # Errors
 ///
+/// - [`SeccompError::UnsupportedArchitecture`] — host CPU arch is not x86_64.
 /// - [`SeccompError::CompileError`] — BPF compilation failed.
 /// - [`SeccompError::InstallError`] — `prctl(PR_SET_SECCOMP, ...)` failed.
 pub fn build_and_install() -> Result<SeccompApplied, SeccompError> {
+    if !cfg!(target_arch = "x86_64") {
+        return Err(SeccompError::UnsupportedArchitecture {
+            arch: std::env::consts::ARCH,
+        });
+    }
     let prog = build_seccomp_filter()?;
     seccompiler::apply_filter(&prog).map_err(|e| SeccompError::InstallError(e.to_string()))?;
     Ok(SeccompApplied::new())
@@ -454,5 +471,38 @@ mod tests {
         // Value from Linux kernel: EM_X86_64=62, __AUDIT_ARCH_64BIT=0x80000000,
         // __AUDIT_ARCH_LE=0x40000000. Regression guard.
         assert_eq!(AUDIT_ARCH_X86_64, 0xC000_003E);
+    }
+
+    // -- Architecture gate ---------------------------------------------------
+
+    /// On x86_64, build_and_install must NOT immediately error with
+    /// UnsupportedArchitecture. (It may still error if seccomp can't be
+    /// installed in the test environment — that's a separate failure mode.)
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_build_and_install_does_not_reject_x86_64() {
+        let result = build_and_install();
+        if let Err(SeccompError::UnsupportedArchitecture { arch }) = &result {
+            panic!(
+                "build_and_install rejected x86_64 as unsupported arch={arch:?}; \
+                 the gate must only fire on non-x86_64 hosts"
+            );
+        }
+        // Ignore other errors — test environments without prctl support
+        // will surface InstallError, which is unrelated to this regression.
+    }
+
+    /// The error variant exists and produces a useful message. This guards
+    /// against regressions where the variant is removed or renamed and the
+    /// non-x86_64 user gets a confusing fallback diagnostic.
+    #[test]
+    fn test_unsupported_architecture_error_message_includes_arch_name() {
+        let err = SeccompError::UnsupportedArchitecture { arch: "aarch64" };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("aarch64") && msg.contains("x86_64"),
+            "expected error message to mention both the host arch and the \
+             supported arch; got: {msg}"
+        );
     }
 }

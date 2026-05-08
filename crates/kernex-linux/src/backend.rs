@@ -91,35 +91,26 @@ pub fn setup_sandbox<B: SandboxBackend>(
     let seccomp = backend.apply_seccomp()?;
 
     // Step 3: Handle Landlock result and call restrict_self.
+    //
+    // NOTE: this function may be called from inside Command::pre_exec, between
+    // fork and execve, where async-signal-unsafe operations (allocations,
+    // tracing macros, mutex acquisition) can deadlock the child if a parent
+    // thread held the corresponding lock at fork time. We therefore do NOT
+    // log here. The CLI's pre-fork probe already emits a `out.warn(...)` for
+    // the user when degradation will occur (see kernex-cli/src/commands/run.rs).
     match landlock_build_result {
         Ok(built) => {
             // Step 3a: Lock the ruleset — landlock_restrict_self().
             match built.restrict_self() {
                 Ok(landlock) => Ok(SandboxReady::Full(SandboxedSpawn::new(landlock, seccomp))),
                 Err(LandlockError::DepthLimitExceeded) if !strict => {
-                    tracing::warn!(
-                        "Landlock depth limit exceeded (16 rulesets already stacked); \
-                         falling back to seccomp-only enforcement"
-                    );
                     Ok(SandboxReady::SeccompOnly(seccomp))
                 }
                 Err(e) => Err(LinuxError::Landlock(e)),
             }
         }
-        Err(LandlockError::DepthLimitExceeded) if !strict => {
-            tracing::warn!(
-                "Landlock depth limit exceeded on ruleset build; \
-                 falling back to seccomp-only enforcement"
-            );
-            Ok(SandboxReady::SeccompOnly(seccomp))
-        }
-        Err(LandlockError::NotSupported) if !strict => {
-            tracing::warn!(
-                "Landlock LSM is not supported on this kernel; \
-                 falling back to seccomp-only enforcement"
-            );
-            Ok(SandboxReady::SeccompOnly(seccomp))
-        }
+        Err(LandlockError::DepthLimitExceeded) if !strict => Ok(SandboxReady::SeccompOnly(seccomp)),
+        Err(LandlockError::NotSupported) if !strict => Ok(SandboxReady::SeccompOnly(seccomp)),
         Err(e) => Err(LinuxError::Landlock(e)),
     }
 }

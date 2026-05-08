@@ -74,6 +74,74 @@ impl Default for FilesystemPolicy {
     }
 }
 
+impl FilesystemPolicy {
+    /// Return a copy of this policy with hidden paths stripped from
+    /// `allow_read` and `allow_write` when `block_hidden` is set, alongside
+    /// the list of skipped paths so the caller can surface them to the user.
+    ///
+    /// This exists specifically so that callers using `Command::pre_exec`
+    /// can do the filtering (and any logging) **in the parent process** before
+    /// the fork. After fork, between fork and execve, calling anything that
+    /// allocates or takes locks (including the `tracing::warn!` macro) is
+    /// async-signal-unsafe and can deadlock the child if a parent thread
+    /// held an allocator lock at fork time. Pre-filtering removes the only
+    /// reason the enforcement code path needed to log.
+    ///
+    /// `block_hidden = false` is a no-op: returns a clone with empty `skipped`.
+    pub fn filter_for_enforcement(&self) -> (Self, Vec<std::path::PathBuf>) {
+        if !self.block_hidden {
+            return (self.clone(), Vec::new());
+        }
+
+        let mut skipped: Vec<std::path::PathBuf> = Vec::new();
+        let mut keep_read: Vec<std::path::PathBuf> = Vec::with_capacity(self.allow_read.len());
+        let mut keep_write: Vec<std::path::PathBuf> = Vec::with_capacity(self.allow_write.len());
+
+        for p in &self.allow_read {
+            if Self::is_hidden_path(p) {
+                skipped.push(p.clone());
+            } else {
+                keep_read.push(p.clone());
+            }
+        }
+
+        for p in &self.allow_write {
+            if Self::is_hidden_path(p) {
+                skipped.push(p.clone());
+            } else {
+                keep_write.push(p.clone());
+            }
+        }
+
+        (
+            Self {
+                allow_read: keep_read,
+                allow_write: keep_write,
+                block_hidden: self.block_hidden,
+                allow_hidden_reason: self.allow_hidden_reason.clone(),
+            },
+            skipped,
+        )
+    }
+
+    /// Returns `true` if any *normal* component of `path` starts with `.`.
+    ///
+    /// Special components `.` and `..` are excluded — only real names like
+    /// `.ssh` count. Mirrors the implementation that previously lived in
+    /// `kernex-linux::landlock`; centralised here so policy callers don't
+    /// need to depend on the platform crate to do hidden-path detection.
+    pub fn is_hidden_path(path: &std::path::Path) -> bool {
+        use std::path::Component;
+        path.components().any(|c| {
+            if let Component::Normal(name) = c {
+                name.to_string_lossy().starts_with('.')
+            } else {
+                false
+            }
+        })
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct NetworkPolicy {
@@ -246,5 +314,103 @@ mod tests {
             s.trim() == "http",
             "McpTransport::Http should serialize as 'http', got: {s}"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // FilesystemPolicy::filter_for_enforcement
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_filter_for_enforcement_strips_hidden_when_block_hidden_true() {
+        let p = FilesystemPolicy {
+            allow_read: vec![PathBuf::from("/etc"), PathBuf::from("/home/u/.ssh")],
+            allow_write: vec![PathBuf::from("/tmp/out"), PathBuf::from("/home/u/.aws")],
+            block_hidden: true,
+            allow_hidden_reason: None,
+        };
+
+        let (filtered, skipped) = p.filter_for_enforcement();
+
+        assert_eq!(filtered.allow_read, vec![PathBuf::from("/etc")]);
+        assert_eq!(filtered.allow_write, vec![PathBuf::from("/tmp/out")]);
+        assert!(skipped.contains(&PathBuf::from("/home/u/.ssh")));
+        assert!(skipped.contains(&PathBuf::from("/home/u/.aws")));
+        assert_eq!(skipped.len(), 2);
+    }
+
+    #[test]
+    fn test_filter_for_enforcement_passthrough_when_block_hidden_false() {
+        let p = FilesystemPolicy {
+            allow_read: vec![PathBuf::from("/home/u/.ssh")],
+            allow_write: vec![],
+            block_hidden: false,
+            allow_hidden_reason: Some("intentional".to_string()),
+        };
+
+        let (filtered, skipped) = p.filter_for_enforcement();
+
+        assert_eq!(filtered.allow_read, vec![PathBuf::from("/home/u/.ssh")]);
+        assert!(skipped.is_empty());
+    }
+
+    #[test]
+    fn test_filter_for_enforcement_preserves_block_hidden_flag() {
+        // The cleaned policy must preserve block_hidden so that any
+        // defense-in-depth check downstream still fires.
+        let p = FilesystemPolicy {
+            allow_read: vec![PathBuf::from("/etc")],
+            allow_write: vec![],
+            block_hidden: true,
+            allow_hidden_reason: None,
+        };
+        let (filtered, _) = p.filter_for_enforcement();
+        assert!(filtered.block_hidden);
+    }
+
+    #[test]
+    fn test_filter_for_enforcement_no_change_when_no_hidden_paths() {
+        let p = FilesystemPolicy {
+            allow_read: vec![PathBuf::from("/etc"), PathBuf::from("/usr/lib")],
+            allow_write: vec![PathBuf::from("/tmp")],
+            block_hidden: true,
+            allow_hidden_reason: None,
+        };
+        let (filtered, skipped) = p.filter_for_enforcement();
+        assert_eq!(filtered.allow_read, p.allow_read);
+        assert_eq!(filtered.allow_write, p.allow_write);
+        assert!(skipped.is_empty());
+    }
+
+    #[test]
+    fn test_is_hidden_path_detects_dotfile() {
+        use std::path::Path;
+        assert!(FilesystemPolicy::is_hidden_path(Path::new(".ssh")));
+        assert!(FilesystemPolicy::is_hidden_path(Path::new("/home/u/.ssh")));
+        assert!(FilesystemPolicy::is_hidden_path(Path::new(
+            "/home/u/.config/gh/hosts.yml"
+        )));
+    }
+
+    #[test]
+    fn test_is_hidden_path_does_not_flag_dot_or_dotdot() {
+        use std::path::Path;
+        // The literal current/parent dir components must not register as hidden.
+        assert!(!FilesystemPolicy::is_hidden_path(Path::new(".")));
+        assert!(!FilesystemPolicy::is_hidden_path(Path::new("..")));
+        assert!(!FilesystemPolicy::is_hidden_path(Path::new("./src/main.rs")));
+        assert!(!FilesystemPolicy::is_hidden_path(Path::new(
+            "../sibling/src"
+        )));
+    }
+
+    #[test]
+    fn test_is_hidden_path_does_not_flag_normal_paths() {
+        use std::path::Path;
+        assert!(!FilesystemPolicy::is_hidden_path(Path::new(
+            "/tmp/output.txt"
+        )));
+        assert!(!FilesystemPolicy::is_hidden_path(Path::new(
+            "/home/user/projects/code.rs"
+        )));
     }
 }

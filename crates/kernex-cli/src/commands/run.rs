@@ -127,28 +127,58 @@ fn spawn_with_enforcement(
         match landlock_probe {
             Err(LandlockError::NotSupported) => out.warn(
                 "Landlock LSM is not available on this kernel; \
-                 falling back to seccomp-only enforcement.",
+                 falling back to seccomp-only enforcement. \
+                 Filesystem allow_read / allow_write rules will NOT be enforced.",
             ),
             Err(ref e) => out.warn(&format!(
                 "Landlock ruleset build failed ({e}); \
-                 falling back to seccomp-only enforcement.",
+                 falling back to seccomp-only enforcement. \
+                 Filesystem allow_read / allow_write rules will NOT be enforced.",
             )),
             Ok(_) => {}
         }
     }
 
-    let fs_policy = policy.filesystem.clone();
+    // Pre-filter the policy in the parent process so the pre_exec closure
+    // doesn't have to allocate, format, or take tracing-subscriber locks
+    // between fork and execve. See FilesystemPolicy::filter_for_enforcement.
+    let (fs_policy, skipped_hidden) = policy.filesystem.filter_for_enforcement();
+    for skipped in &skipped_hidden {
+        out.warn(&format!(
+            "Skipping hidden path '{}' because block_hidden = true",
+            skipped.display()
+        ));
+    }
+
     let mut cmd = Command::new(&command[0]);
     cmd.args(&command[1..]);
 
+    // Sanitise the child's environment block. The parent's full envp is
+    // a credential-leak vector (AWS_SECRET_ACCESS_KEY, GITHUB_TOKEN, etc.).
+    // env_clear() drops everything; we then re-insert only the variables
+    // the policy explicitly allows via environment.allow_read.
+    cmd.env_clear();
+    for var_name in &policy.environment.allow_read {
+        if let Ok(value) = std::env::var(var_name) {
+            cmd.env(var_name, value);
+        }
+    }
+
     // SAFETY: This closure runs in the forked child process before execve().
-    // We apply Landlock + seccomp as the first action so the sandbox is active
-    // before the agent takes any action. setup_sandbox only makes kernel
-    // syscalls — no parent allocator locks are held in this window.
+    // Between fork and execve only async-signal-safe operations are valid:
+    // direct syscalls are fine, but malloc, pthread_mutex, tracing::*!, and
+    // anything that takes a parent-held lock can deadlock the child if a
+    // parent thread held that lock at fork time. We deliberately keep this
+    // closure to setup_sandbox (kernel syscalls only — Landlock + seccomp).
+    // All hidden-path filtering and warning logs happen above in the parent.
     unsafe {
         cmd.pre_exec(move || {
             setup_sandbox(&LinuxSandboxBackend, &fs_policy, strict)
                 .map(|_| ())
+                // io::Error::other allocates only when the formatted string
+                // exceeds SSO; the LinuxError::to_string() messages here are
+                // short, so this is acceptable practice. If we ever surface
+                // longer formatted errors, switch to a non-allocating wrapper.
                 .map_err(|e| std::io::Error::other(e.to_string()))
         });
     }
@@ -195,8 +225,19 @@ fn spawn_with_enforcement(
     // There is an inherent race window between spawn and ES activation, handled
     // by the NO_AGENT_PID sentinel in es_client: all events are allowed until
     // the PID is set via the atomic store in activate_for_pid.
-    let mut child = Command::new(&command[0])
-        .args(&command[1..])
+    let mut spawn_cmd = Command::new(&command[0]);
+    spawn_cmd.args(&command[1..]);
+
+    // Sanitise env block — drop the parent's full envp (credential leak vector)
+    // and only re-insert variables explicitly listed in environment.allow_read.
+    spawn_cmd.env_clear();
+    for var_name in &policy.environment.allow_read {
+        if let Ok(value) = std::env::var(var_name) {
+            spawn_cmd.env(var_name, value);
+        }
+    }
+
+    let mut child = spawn_cmd
         .spawn()
         .map_err(|e| anyhow::anyhow!("Failed to launch '{}': {e}", command[0]))?;
 

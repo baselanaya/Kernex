@@ -46,12 +46,13 @@ pub fn build_ruleset(policy: &FilesystemPolicy) -> Result<LandlockBuilt, Landloc
 
     // Add read-only rules.
     for path in &policy.allow_read {
-        // SECURITY: skip paths that start with '.' when block_hidden is set.
+        // Defence in depth: skip hidden paths if block_hidden is set even if the
+        // caller forgot to pre-filter. The CLI's `kernex run` filters in the
+        // parent (see FilesystemPolicy::filter_for_enforcement) so this branch
+        // is normally a no-op. We deliberately do NOT log here — this function
+        // can be called from inside Command::pre_exec, between fork and execve,
+        // where allocator and tracing-subscriber locks must not be taken.
         if policy.block_hidden && is_hidden_path(path) {
-            tracing::warn!(
-                path = %path.display(),
-                "skipping hidden path in allow_read because block_hidden = true"
-            );
             continue;
         }
 
@@ -70,12 +71,8 @@ pub fn build_ruleset(policy: &FilesystemPolicy) -> Result<LandlockBuilt, Landloc
 
     // Add read+write rules (allow_write implies read access too).
     for path in &policy.allow_write {
-        // SECURITY: same hidden-path guard.
+        // Same defence-in-depth guard. See note above on logging.
         if policy.block_hidden && is_hidden_path(path) {
-            tracing::warn!(
-                path = %path.display(),
-                "skipping hidden path in allow_write because block_hidden = true"
-            );
             continue;
         }
 

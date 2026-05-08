@@ -42,6 +42,17 @@ pub enum SeccompError {
     /// `prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, ...)` failed.
     #[error("failed to install seccomp BPF filter: {0}")]
     InstallError(String),
+
+    /// The host CPU architecture is not supported by Kernex's seccomp
+    /// blocklist. Today only x86_64 is supported. Without this check the
+    /// filter's first BPF instruction (an x86_64 architecture validation)
+    /// fires `KillProcess` for every syscall on aarch64 / arm / etc.,
+    /// silently SIGKILLing the agent.
+    #[error(
+        "kernex seccomp filter does not support this architecture ({arch}); \
+         only x86_64 is supported today"
+    )]
+    UnsupportedArchitecture { arch: &'static str },
 }
 
 /// Top-level error type for `kernex-linux`.
